@@ -1,10 +1,17 @@
-#include <stdio.h>
 #include "Logger.h"
-#define TESTMSG Msg
+#include "Curl_Test.h"
+
+#include <iostream>
+#include <string>
+
 int main()
 {
-    Logger printLog;
-    char msg = "Test\n";
-    printLog.output(msg);
+    std::string result;
+    func(result);
+    std::cout << result << std::endl;
+
+    char msg[10] = "Test\n";
+    output(msg);
+
     return 0;
 }
