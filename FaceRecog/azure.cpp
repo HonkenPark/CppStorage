@@ -13,7 +13,7 @@ MS_AZURE::~MS_AZURE()
 }
 
 #ifdef SET_DEBUG_MODE_FOR_CURL
-static void dump(const char *text, FILE *stream, unsigned char *ptr, size_t size)
+static void dump(const char* text, FILE* stream, unsigned char* ptr, size_t size)
 {
   size_t i;
   size_t c;
@@ -43,9 +43,9 @@ static void dump(const char *text, FILE *stream, unsigned char *ptr, size_t size
   }
 }
 
-static int my_trace(CURL *handle, curl_infotype type, char *data, size_t size, void *userp)
+static int my_trace(CURL* handle, curl_infotype type, char* data, size_t size, void* userp)
 {
-  const char *text;
+  const char* text;
   (void)handle; /* prevent compiler warning */
   (void)userp;
  
@@ -75,72 +75,104 @@ static int my_trace(CURL *handle, curl_infotype type, char *data, size_t size, v
     break;
   }
  
-  dump(text, stderr, (unsigned char *)data, size);
+  dump(text, stderr, (unsigned char*)data, size);
   return 0;
 }
 #endif
 
-unsigned int MS_AZURE::WriteCallback(void *contents, unsigned int size, unsigned int nmemb, void *userp)
+static unsigned int WriteCallback(void* contents, unsigned int size, unsigned int nmemb, void* userp)
 {
-	((std::string*)userp)->append((char*)contents, size * nmemb);
-    return size * nmemb;
+	((std::string*)userp)->append((char*)contents, size* nmemb);
+    return size* nmemb;
 }
 
-void MS_AZURE::func(EImageSource imgSource, std::string &buf)
+void MS_AZURE::face(EImageSource imgSource, ERequestType mode, std::string& param, std::string& response)
 {
 	curl = curl_easy_init();
     
-    if(curl)
+  if(curl)
+  {
+    #ifdef SET_DEBUG_MODE_FOR_CURL
+    curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, my_trace);
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    #endif
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+
+    /* Set Header */
+    curl_slist* responseHeaders = nullptr;
+    responseHeaders = curl_slist_append(responseHeaders, header.c_str());
+
+    if (EImageSource::SOURCE_URL == imgSource)
     {
-        #ifdef SET_DEBUG_MODE_FOR_CURL
-        curl_easy_setopt(curl, CURLOPT_DEBUGFUNCTION, my_trace);
-        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-        #endif
+      responseHeaders = curl_slist_append(responseHeaders, header_url.c_str());
+      curl_easy_setopt(curl, CURLOPT_HTTPHEADER, responseHeaders);
 
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+      switch (mode)
+      {
+      case ERequestType::TYPE_DETECT:
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data_url.c_str());
+        break;
+      case ERequestType::TYPE_GET_ATTRIBUTE:
+        break;
+      case ERequestType::TYPE_FIND_SIMILAR:
+        break;
+      default:
+        break;
+      }
+    }
+    else if (EImageSource::SOURCE_STREAM == imgSource)
+    {
+      responseHeaders = curl_slist_append(responseHeaders, header_stream.c_str());
+      curl_easy_setopt(curl, CURLOPT_HTTPHEADER, responseHeaders);
 
-        /* Set Header */
-        curl_slist *responseHeaders = nullptr;
-        responseHeaders = curl_slist_append(responseHeaders, header.c_str());
+      std::string path_stream = post_data_stream;
+      std::ifstream in(path_stream.append(param).c_str(), std::ios::in | std::ios::binary);
+      // std::ifstream in("/mnt/d/dev/CppStorage/FaceRecog/img/great_grand_father.jpeg", std::ios::in | std::ios::binary);
 
-		if (EImageSource::SOURCE_URL == imgSource)
-		{
-			responseHeaders = curl_slist_append(responseHeaders, header_url.c_str());
-			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, responseHeaders);
-			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data_url.c_str());
-		}
-		else if (EImageSource::SOURCE_STREAM == imgSource)
-		{
-			responseHeaders = curl_slist_append(responseHeaders, header_stream.c_str());
-			curl_easy_setopt(curl, CURLOPT_HTTPHEADER, responseHeaders);
+      if (in)
+      {
+        in.seekg(0, std::ios::end);
+        contents_for_stream.resize(in.tellg());
+        in.seekg(0, std::ios::beg);
+        in.read(&contents_for_stream[0], contents_for_stream.size());
+        in.close();
+      }
 
-			std::ifstream in(post_data_stream.c_str(), std::ios::in | std::ios::binary);
+      switch (mode)
+      {
+      case ERequestType::TYPE_DETECT:
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, contents_for_stream.size());
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, contents_for_stream.c_str());
+        break;
+      case ERequestType::TYPE_GET_ATTRIBUTE:
+        break;
+      case ERequestType::TYPE_FIND_SIMILAR:
+        break;
+      default:
+        std::cout << "[ERROR] Unknow Request Type" << std::endl;
+        return;
+      }
+    }
+    else
+    {
+      std::cout << "[ERROR] Unknow Image Source" << std::endl;
+      return;
+    }
+    
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
+    res = curl_easy_perform(curl);
 
-			if (in)
-			{
-				in.seekg(0, std::ios::end);
-				contents_for_stream.resize(in.tellg());
-				in.seekg(0, std::ios::beg);
-				in.read(&contents_for_stream[0], contents_for_stream.size());
-				in.close();
-			}
+    curl_slist_free_all(responseHeaders);
+    curl_easy_cleanup(curl);
 
-			curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, contents_for_stream.size());
-			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, contents_for_stream.c_str());
-		}
-		else
-		{
-			std::cout << "Unknow Image Source" << std::endl;
-			return;
-		}
-
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &result);
-        res = curl_easy_perform(curl);
-
-        curl_slist_free_all(responseHeaders);
-        curl_easy_cleanup(curl);
-
-        buf = result;
+    response = result;
+  }
+  else
+  {
+    std::cout << "[ERROR] curl is nullptr !!" << std::endl;
+    return;
+  }
 }

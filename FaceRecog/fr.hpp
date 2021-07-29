@@ -31,7 +31,7 @@ enum class EServiceType
 {
     SERVICE_AZURE = 0,
     SERVICE_LUNA
-}
+};
 
 class FR_Service
 {
@@ -40,7 +40,7 @@ public:
     ~FR_Service();
 
     MS_AZURE ms_Azure;  
-    std::string requestToAzure(std::string& result);
+    std::string requestToAzure(const std::string input, std::string& result);
 
 private:
     std::string contents_for_stream;

@@ -9,7 +9,7 @@ int main()
     std::cout << "Start FR Service" << std::endl;
 
     std::string result = "";
-    service.requestToAzure(result);
+    service.requestToAzure(crying_baby, result);
     std::cout << result << std::endl;
 
     std::cout << "End FR Service" << std::endl;
