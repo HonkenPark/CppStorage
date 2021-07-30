@@ -86,8 +86,44 @@ static unsigned int WriteCallback(void* contents, unsigned int size, unsigned in
     return size* nmemb;
 }
 
+std::string MS_AZURE::generate_key_header()
+{
+  std::string ret = "";
+  ret.append(face_header_prefix).append(face_header_key);
+  return ret;
+}
+
+std::string MS_AZURE::generate_content_header(EImageSource source)
+{
+  std::string ret = "";
+  if (EImageSource::SOURCE_URL == source)
+  {
+    ret.append(face_content_type_url);
+  }
+  else if (EImageSource::SOURCE_STREAM == source)
+  {
+    ret.append(face_content_type_stream);
+  }
+  else
+  {
+    std::cout << "[ERROR] Unknown Image Source" << std::endl;
+  }
+  return ret;
+}
+
+std::string MS_AZURE::generate_post_url()
+{
+  std::string ret = "";
+}
+
+std::string MS_AZURE::generate_content_type()
+{
+  std::string ret = "";
+}
+
 void MS_AZURE::face(EImageSource imgSource, ERequestType mode, std::string& param, std::string& response)
 {
+  std::string contents_for_stream;
 	curl = curl_easy_init();
     
   if(curl)
@@ -102,17 +138,17 @@ void MS_AZURE::face(EImageSource imgSource, ERequestType mode, std::string& para
 
     /* Set Header */
     curl_slist* responseHeaders = nullptr;
-    responseHeaders = curl_slist_append(responseHeaders, header.c_str());
+    responseHeaders = curl_slist_append(responseHeaders, generate_key_header().c_str());
+    responseHeaders = curl_slist_append(responseHeaders, generate_content_header(imgSource).c_str());
 
     if (EImageSource::SOURCE_URL == imgSource)
     {
-      responseHeaders = curl_slist_append(responseHeaders, header_url.c_str());
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, responseHeaders);
 
       switch (mode)
       {
       case ERequestType::TYPE_DETECT:
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data_url.c_str());
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, test_post_data_url.c_str());
         break;
       case ERequestType::TYPE_GET_ATTRIBUTE:
         break;
@@ -124,12 +160,10 @@ void MS_AZURE::face(EImageSource imgSource, ERequestType mode, std::string& para
     }
     else if (EImageSource::SOURCE_STREAM == imgSource)
     {
-      responseHeaders = curl_slist_append(responseHeaders, header_stream.c_str());
       curl_easy_setopt(curl, CURLOPT_HTTPHEADER, responseHeaders);
 
-      std::string path_stream = post_data_stream;
+      std::string path_stream = face_test_post_data_stream;
       std::ifstream in(path_stream.append(param).c_str(), std::ios::in | std::ios::binary);
-      // std::ifstream in("/mnt/d/dev/CppStorage/FaceRecog/img/great_grand_father.jpeg", std::ios::in | std::ios::binary);
 
       if (in)
       {

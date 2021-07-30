@@ -42,6 +42,12 @@
         "streambuf": "cpp",
         "typeinfo": "cpp",
         "optional": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "bitset": "cpp",
+        "cstring": "cpp",
+        "ctime": "cpp",
+        "map": "cpp",
+        "regex": "cpp",
+        "cinttypes": "cpp"
     }
 }

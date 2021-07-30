@@ -1,8 +1,11 @@
 #include <string>
+#include <map>
 #include <curl/curl.h>
 
 #include "azure.hpp"
 //#include "luna.hpp"
+
+const std::string families_list = "./data/json/families.json";
 
 // SAMPLE PICTURE
 const std::string great_grand_father = "great_grand_father.jpg";
@@ -39,9 +42,12 @@ public:
     FR_Service();
     ~FR_Service();
 
-    MS_AZURE ms_Azure;  
-    std::string requestToAzure(const std::string input, std::string& result);
+    MS_AZURE ms_Azure;
+    bool registGroupList(int imgParam, int familyParam, const std::string path);
+    std::string requestToAzure(int imgParam, int familyParam, const std::string input, std::string& result);
+    inline const std::map<std::string, std::string>& grouplist() { return group_list_; }
 
 private:
+    std::map<std::string, std::string> group_list_;
     std::string contents_for_stream;
 };
