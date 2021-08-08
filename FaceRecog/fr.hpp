@@ -42,12 +42,13 @@ public:
     FR_Service();
     ~FR_Service();
 
-    MS_AZURE ms_Azure;
-    bool registGroupList(int imgParam, int familyParam, const std::string path);
-    std::string requestToAzure(int imgParam, int familyParam, const std::string input, std::string& result);
-    inline const std::map<std::string, std::string>& grouplist() { return group_list_; }
+    AzureManager azuremanager;
+    bool load_group_list(int imgParam, int familyParam, std::map<std::string, std::string>& group_list, const std::string path);
+    void add_group_faceId_list(EImageSource image);
+    void request_Azure(int imgParam, int familyParam, const std::string input, std::string& response);
+    std::map<std::string, std::string> group_list_;
+    ///inline const std::map<std::string, std::string>& grouplist() { return group_list_; }
 
 private:
-    std::map<std::string, std::string> group_list_;
     std::string contents_for_stream;
 };

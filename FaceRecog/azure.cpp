@@ -1,15 +1,35 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <thread>
+#include <mutex>
+
+#include "rapidjson/document.h"
+#include "rapidjson/istreamwrapper.h"
+#include "rapidjson/prettywriter.h"
+
 #include "azure.hpp"
 
-MS_AZURE::MS_AZURE()
+using namespace rapidjson;
+
+static std::unique_ptr<AzureManager> inst_;
+
+AzureManager::AzureManager()
 {
   
 }
-MS_AZURE::~MS_AZURE()
+AzureManager::~AzureManager()
 {
 
+}
+
+const std::unique_ptr<AzureManager>& AzureManager::inst()
+{
+    static std::once_flag flag;
+    std::call_once(flag, []{
+        inst_ = std::make_unique<AzureManager>();
+    });
+    return inst_;
 }
 
 #ifdef SET_DEBUG_MODE_FOR_CURL
@@ -86,14 +106,102 @@ static unsigned int WriteCallback(void* contents, unsigned int size, unsigned in
     return size* nmemb;
 }
 
-std::string MS_AZURE::generate_key_header()
+std::string AzureManager::get_faceId_from_json(std::string json)
 {
+  int count = 0;
+  size_t pos = 0;
   std::string ret = "";
-  ret.append(face_header_prefix).append(face_header_key);
+
+  if ((json.front() == '[') && (json.back() == ']'))
+  {
+    std::cout << "Front '[' and Last ']' will be deleted !!" << json << std::endl;
+    json.erase(0, 1);
+    json.pop_back();
+  }
+  std::string tmp = json;
+
+  while((pos = tmp.find("faceId")) != std::string::npos)
+  {
+    count++;
+    tmp = tmp.substr(pos + 1);
+  }
+
+  if (count > 1)
+  {
+    // TODO: Temporary, 2nd~ result will be deleted.
+    std::cout << "Onlt 1th faceId will be processed !!" << json << std::endl;
+    if ((pos = json.find(",{")) != std::string::npos)
+    {
+      tmp = json.substr(0, pos);
+    }
+    json = tmp;
+  }
+
+  Document d;
+  d.Parse(json.c_str());
+  assert(d.IsObject());
+  assert(d.HasMember("faceId"));
+  assert(d["faceId"].IsString());
+  ret = d["faceId"].GetString();
+
   return ret;
 }
 
-std::string MS_AZURE::generate_content_header(EImageSource source)
+std::string AzureManager::get_json_from_faceId(std::string faceId, std::string candidate)
+{
+  std::string ret = "";
+  std::string faceId_key = "faceId";
+  std::string faceId_value = faceId;
+  int max_faceIds = 0;
+  std::string faceIds_key = "faceIds";
+  std::string faceIds_value = "";
+  std::string candidate_key = "maxNumOfCandidatesReturned";
+  std::string candidate_value = candidate;
+  std::string mode_key = "mode";
+  std::string mode_value = "matchPerson";
+
+  for (auto iter : group_faceId_)
+  {
+    if (max_faceIds > 0)
+    {
+      faceIds_value.append(",");
+    }
+    faceIds_value.append("\"").append(iter.first).append("\"");
+    max_faceIds++;
+  }
+  if (faceIds_value.back() == ',')
+  {
+    faceIds_value.pop_back();
+  }
+
+  ret.append("{");
+  ret.append("\"").append(faceId_key).append("\"");
+  ret.append(":").append("\"").append(faceId_value).append("\"").append(",");
+
+  ret.append("\"").append(faceIds_key).append("\"");
+  ret.append(":").append("[").append(faceIds_value).append("]").append(",");
+
+  ret.append("\"").append(candidate_key).append("\"");
+  ret.append(":").append(candidate_value).append(",");
+
+  ret.append("\"").append(mode_key).append("\"");
+  ret.append(":").append("\"").append(mode_value).append("\"");
+  ret.append("}");
+
+  return ret;
+}
+
+std::string AzureManager::generate_key_header()
+{
+  std::string ret = "";
+  ret.append(face_header_prefix)
+     .append(face_header_key);
+  
+ // std::cout << "generate_key_header : [" << ret << "]" << std::endl;
+  return ret;
+}
+
+std::string AzureManager::generate_content_header(EImageSource source)
 {
   std::string ret = "";
   if (EImageSource::SOURCE_URL == source)
@@ -108,22 +216,119 @@ std::string MS_AZURE::generate_content_header(EImageSource source)
   {
     std::cout << "[ERROR] Unknown Image Source" << std::endl;
   }
+
+ // std::cout << "generate_content_header : [" << ret << "]" << std::endl;
   return ret;
 }
 
-std::string MS_AZURE::generate_post_url()
+std::string AzureManager::generate_post_url(ERequestType type)
 {
   std::string ret = "";
+  ret.append(face_url_endpoint)
+     .append(face_url_version);
+  switch(type)
+  {
+    case ERequestType::TYPE_DETECT:
+      ret.append(face_type_detect)
+         .append(face_detection_model)
+         .append(face_detection3)
+         .append("&").append(face_retFaceId).append("true")
+         .append("&").append(face_retFaceLandmark).append("false");
+    break;
+    case ERequestType::TYPE_GET_ATTRIBUTE:
+      ret.append(face_type_detect)
+         .append(face_detection_model)
+         .append(face_detection1)
+         .append("&").append(face_retFaceId).append("true")
+         .append("&").append(face_retFaceLandmark).append("false")
+         .append("&").append(face_retFaceAttribute).append(face_attr_age).append(",").append(face_attr_gender).append(",")
+                                                   .append(face_attr_headPose).append(",").append(face_attr_smile).append(",")
+                                                   .append(face_attr_facialHair).append(",").append(face_attr_glasses).append(",")
+                                                   .append(face_attr_emotion).append(",").append(face_attr_hair).append(",")
+                                                   .append(face_attr_makeup).append(",").append(face_attr_occlusion).append(",")
+                                                   .append(face_attr_accessories).append(",").append(face_attr_blur).append(",")
+                                                   .append(face_attr_exposure).append(",").append(face_attr_noise);
+    break;
+    case ERequestType::TYPE_FIND_SIMILAR:
+      ret.append(face_type_find);
+    break;
+    default:
+      std::cout << "[ERROR] Unknown Request Type" << std::endl;
+      ret.clear();
+    break;
+  }
+
+ // std::cout << "generate_post_url : [" << ret << "]" << std::endl;
+  return ret;
 }
 
-std::string MS_AZURE::generate_content_type()
+std::string AzureManager::generate_post_data(EImageSource source, ERequestType type, std::string input)
 {
   std::string ret = "";
+  std::string path_target = "";
+  switch(type)
+  {
+    case ERequestType::TYPE_DETECT:
+    case ERequestType::TYPE_GET_ATTRIBUTE:
+    if (EImageSource::SOURCE_URL == source)
+    {
+      ret.append(face_test_post_data_url_prefix)
+         .append(input).append(face_test_post_data_url_postfix);
+      std::cout << ret << std::endl;
+    }
+    else if (EImageSource::SOURCE_STREAM == source)
+    {
+      path_target.append(face_test_post_data_stream);
+      std::ifstream in(path_target.append(input).c_str(), std::ios::in | std::ios::binary);
+      if (in)
+      {
+        in.seekg(0, std::ios::end);
+        ret.resize(in.tellg());
+        in.seekg(0, std::ios::beg);
+        in.read(&ret[0], ret.size());
+        in.close();
+      }
+      else
+      {
+        std::cout << "[ERROR] ifstream failed" << std::endl;
+        ret.clear();
+      }
+    }
+    else
+    {
+      std::cout << "[ERROR] Unknown Image Source" << std::endl;
+    }
+    break;
+    case ERequestType::TYPE_FIND_SIMILAR:
+      ret = get_json_from_faceId(faceId_, "10");
+      std::cout << ret << std::endl;
+    break;
+    default:
+      std::cout << "[ERROR] Unknown Request Type" << std::endl;
+      ret.clear();
+    break;
+  }
+
+  return ret;
 }
 
-void MS_AZURE::face(EImageSource imgSource, ERequestType mode, std::string& param, std::string& response)
+void AzureManager::add_group_faceId_list(std::string name, std::string value)
 {
-  std::string contents_for_stream;
+  //TODO: 중복체크필요
+  group_faceId_.insert(std::pair<std::string, std::string>(name, value));
+}
+
+void AzureManager::faceId(EImageSource source, ERequestType type, std::string& input, std::string& faceId)
+{
+  std::cout << "faceId  S" << std::endl;
+  std::string contents_for_postfield = "";
+
+  if (ERequestType::TYPE_FIND_SIMILAR == type)
+  {
+    source = EImageSource::SOURCE_URL;
+  }
+  
+  result.clear();
 	curl = curl_easy_init();
     
   if(curl)
@@ -134,65 +339,20 @@ void MS_AZURE::face(EImageSource imgSource, ERequestType mode, std::string& para
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
     #endif
 
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_URL, generate_post_url(type).c_str());
 
     /* Set Header */
     curl_slist* responseHeaders = nullptr;
     responseHeaders = curl_slist_append(responseHeaders, generate_key_header().c_str());
-    responseHeaders = curl_slist_append(responseHeaders, generate_content_header(imgSource).c_str());
+    responseHeaders = curl_slist_append(responseHeaders, generate_content_header(source).c_str());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, responseHeaders);
 
-    if (EImageSource::SOURCE_URL == imgSource)
+    contents_for_postfield = generate_post_data(source, type, input);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, contents_for_postfield.c_str());
+
+    if (EImageSource::SOURCE_STREAM == source)
     {
-      curl_easy_setopt(curl, CURLOPT_HTTPHEADER, responseHeaders);
-
-      switch (mode)
-      {
-      case ERequestType::TYPE_DETECT:
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, test_post_data_url.c_str());
-        break;
-      case ERequestType::TYPE_GET_ATTRIBUTE:
-        break;
-      case ERequestType::TYPE_FIND_SIMILAR:
-        break;
-      default:
-        break;
-      }
-    }
-    else if (EImageSource::SOURCE_STREAM == imgSource)
-    {
-      curl_easy_setopt(curl, CURLOPT_HTTPHEADER, responseHeaders);
-
-      std::string path_stream = face_test_post_data_stream;
-      std::ifstream in(path_stream.append(param).c_str(), std::ios::in | std::ios::binary);
-
-      if (in)
-      {
-        in.seekg(0, std::ios::end);
-        contents_for_stream.resize(in.tellg());
-        in.seekg(0, std::ios::beg);
-        in.read(&contents_for_stream[0], contents_for_stream.size());
-        in.close();
-      }
-
-      switch (mode)
-      {
-      case ERequestType::TYPE_DETECT:
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, contents_for_stream.size());
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, contents_for_stream.c_str());
-        break;
-      case ERequestType::TYPE_GET_ATTRIBUTE:
-        break;
-      case ERequestType::TYPE_FIND_SIMILAR:
-        break;
-      default:
-        std::cout << "[ERROR] Unknow Request Type" << std::endl;
-        return;
-      }
-    }
-    else
-    {
-      std::cout << "[ERROR] Unknow Image Source" << std::endl;
-      return;
+      curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, contents_for_postfield.size());
     }
     
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
@@ -202,11 +362,25 @@ void MS_AZURE::face(EImageSource imgSource, ERequestType mode, std::string& para
     curl_slist_free_all(responseHeaders);
     curl_easy_cleanup(curl);
 
-    response = result;
+    /* TODO: Get faceId from result Json */
+
+    if (ERequestType::TYPE_FIND_SIMILAR != type)
+    {
+      faceId = get_faceId_from_json(result);
+    }
   }
   else
   {
     std::cout << "[ERROR] curl is nullptr !!" << std::endl;
     return;
   }
+
+  faceId_ = faceId;
+
+  if (ERequestType::TYPE_FIND_SIMILAR == type)
+  {
+    std::cout << result << std::endl;
+    //TODO: result --> [{"faceId":"4e4610b2-60b3-439c-9e7e-a26b8aefcf3d","confidence":1.0}]   faceId parcing 후, 리스트에서 검색
+  }
+  std::cout << "faceId  E" << std::endl;
 }

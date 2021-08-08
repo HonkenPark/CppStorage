@@ -10,12 +10,13 @@ int main()
 
     ///////////////////////PASS FROM IMAX MSG///////////////////////////////
     std::string response = "";
-    service.requestToAzure(
+    service.request_Azure(
     2, // 1 - URL,  2 - FILE
     3, // Family No. (1~3)
-    "test_input.jpg",
+    "leesoonjae.jpg",
+    // "https://file.mk.co.kr/meet/neds/2021/05/image_readtop_2021_425252_16200070234632285.jpg",
     response);
-    std::cout << response << std::endl;
+    
     ///////////////////////FOR TEST, INPUT MANUALLY ///////////////////////
 
     std::cout << "End FR Service" << std::endl;

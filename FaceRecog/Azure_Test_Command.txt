@@ -1,0 +1,49 @@
+[감지]
+curl "TODO_INSERT_YOUR_FACE_ENDPOINT_HERE/face/v1.0/detect?
+detectionModel=detection_03&returnFaceId=true&returnFaceLandmarks=false"
+-H "Ocp-Apim-Subscription-Key: TODO_INSERT_YOUR_FACE_SUBSCRIPTION_KEY_HERE"
+-H "Content-Type: application/json"
+--data-ascii "{\"url\":\"https://upload.wikimedia.org/wikipedia/commons/c/c3/RH_Louise_Lillian_Gish.jpg\"}"
+
+
+[특성 가져오기]
+curl "TODO_INSERT_YOUR_FACE_ENDPOINT_HERE/face/v1.0/detect?
+detectionModel=detection_01&returnFaceId=true&returnFaceLandmarks=false&returnFaceAttributes=age,gender,headPose,smile,facialHair,glasses,emotion,hair,makeup,occlusion,accessories,blur,exposure,noise"
+-H "Ocp-Apim-Subscription-Key: TODO_INSERT_YOUR_FACE_SUBSCRIPTION_KEY_HERE"
+-H "Content-Type: application/json"
+--data-ascii "{\"url\":\"https://upload.wikimedia.org/wikipedia/commons/c/c3/RH_Louise_Lillian_Gish.jpg\"}"
+
+
+
+[비교 얼굴 등록 - 감지 얼굴은 faceId 따로 등록]
+curl "TODO_INSERT_YOUR_FACE_ENDPOINT_HERE/face/v1.0/detect?
+detectionModel=detection_03&returnFaceId=true&returnFaceLandmarks=false"
+-H "Ocp-Apim-Subscription-Key: TODO_INSERT_YOUR_FACE_SUBSCRIPTION_KEY_HERE"
+-H "Content-Type: application/json"
+--data-ascii "{\"url\":\"https://csdx.blob.core.windows.net/resources/Face/Images/Family1-Dad1.jpg\"}"
+
+
+curl -v -X POST "https://westus.api.cognitive.microsoft.com/face/v1.0/findsimilars"
+-H "Ocp-Apim-Subscription-Key: TODO_INSERT_YOUR_FACE_SUBSCRIPTION_KEY_HERE"
+-H "Content-Type: application/json"
+--data-ascii "{body}"
+
+{
+    "faceId": "",
+    "faceIds": [],
+    "maxNumOfCandidatesReturned": 10,
+    "mode": "matchPerson"
+}
+
+////////////////////////////////////////////////////////////////
+[김수미 등록] f625512d-d104-4b2d-872e-646c7cbebfb5
+curl "https://companion-robot.cognitiveservices.azure.com/face/v1.0/detect?detectionModel=detection_03&returnFaceId=true&returnFaceLandmarks=false" -H "Ocp-Apim-Subscription-Key: 87b4cc98335e478fa9fba70b62ec7e68" -H "Content-Type: application/octet-stream" --data-binary @./data/img/kimsumi.jpg | json_pp
+
+[김혜자 등록] 208a3011-221f-43bc-b437-3bf0bcc5050a
+curl "https://companion-robot.cognitiveservices.azure.com/face/v1.0/detect?detectionModel=detection_03&returnFaceId=true&returnFaceLandmarks=false" -H "Ocp-Apim-Subscription-Key: 87b4cc98335e478fa9fba70b62ec7e68" -H "Content-Type: application/octet-stream" --data-binary @./data/img/kimhyeja.jpg | json_pp
+
+[감지얼굴-김수미 등록]
+curl "https://companion-robot.cognitiveservices.azure.com/face/v1.0/detect?detectionModel=detection_03&returnFaceId=true&returnFaceLandmarks=false" -H "Ocp-Apim-Subscription-Key: 87b4cc98335e478fa9fba70b62ec7e68" -H "Content-Type: application/octet-stream" --data-binary @./data/img/test_input.jpg | json_pp
+
+[찾기]
+curl -v -X POST "https://companion-robot.cognitiveservices.azure.com/face/v1.0/findsimilars" -H "Ocp-Apim-Subscription-Key: 87b4cc98335e478fa9fba70b62ec7e68" -H "Content-Type: application/json" --data-ascii "{\"faceId\": \"101bec6e-3dbc-489e-a37a-1542b22739b7\",\"faceIds\": [\"f625512d-d104-4b2d-872e-646c7cbebfb5\",\"208a3011-221f-43bc-b437-3bf0bcc5050a\"],\"maxNumOfCandidatesReturned\": 2,\"mode\": \"matchPerson\"}"

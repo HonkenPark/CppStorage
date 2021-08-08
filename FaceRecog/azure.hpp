@@ -1,8 +1,9 @@
 #include <string>
 #include <map>
+#include <memory>
 #include <curl/curl.h>
 
-// #define SET_DEBUG_MODE_FOR_CURL
+//  #define SET_DEBUG_MODE_FOR_CURL
 
 enum class EImageSource
 {
@@ -17,19 +18,20 @@ enum class ERequestType
     TYPE_FIND_SIMILAR
 };
 
-class MS_AZURE
+class AzureManager
 {
 public:
-    MS_AZURE();
-    ~MS_AZURE();
+    AzureManager();
+    ~AzureManager();
+    static const std::unique_ptr<AzureManager>& inst();
 
     /* TODO: Need to be re-arranged to be edieted each other */
     const std::string face_url_endpoint          = "";
     const std::string face_header_key            = "";
 
     const std::string face_url_version           = "/face/v1.0/";
-    const std::string face_mode_detect           = "detect?";
-    const std::string face_mode_find             = "findsimilars";
+    const std::string face_type_detect           = "detect?";
+    const std::string face_type_find             = "findsimilars";
     const std::string face_detection_model       = "detectionModel=";
     const std::string face_detection1            = "detection_01";
     const std::string face_detection2            = "detection_02";
@@ -54,17 +56,22 @@ public:
     const std::string face_header_prefix         = "Ocp-Apim-Subscription-Key: ";
     const std::string face_content_type_url      = "Content-Type: application/json";
     const std::string face_content_type_stream   = "Content-Type: application/octet-stream";
-    const std::string face_test_post_data_stream = "./data/img/";
 
     // SAMPLE DATA
-    const std::string face_test_post_data_url    = "{\"url\":\"https://file.mk.co.kr/meet/neds/2021/05/image_readtop_2021_425252_16200070234632285.jpg\"}";
+    const std::string face_test_post_data_url_prefix    = "{\"url\":\"";
+    const std::string face_test_post_data_url_postfix    = "\"}";
+    const std::string face_test_post_data_stream = "./data/img/";
+
+    std::string get_faceId_from_json(std::string json);
+    std::string get_json_from_faceId(std::string faceId, std::string candidate);
     
     std::string generate_key_header();
     std::string generate_content_header(EImageSource source);
-    std::string generate_post_url();
-    std::string generate_content_type();
+    std::string generate_post_url(ERequestType type);
+    std::string generate_post_data(EImageSource source, ERequestType type, std::string input);
 
-    void face(EImageSource source, ERequestType mode, std::string& param, std::string& response);
+    void faceId(EImageSource source, ERequestType mode, std::string& param, std::string& faceId);
+    void add_group_faceId_list(std::string name, std::string value);
 
 private:
     CURL* curl;
@@ -72,5 +79,5 @@ private:
     std::string result; // Result from Azure after request
 
     std::string faceId_;
-    std::map<std::string, std::string> group_faceId;
+    std::map<std::string, std::string> group_faceId_;
 };

@@ -48,6 +48,11 @@
         "ctime": "cpp",
         "map": "cpp",
         "regex": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "ratio": "cpp",
+        "chrono": "cpp",
+        "condition_variable": "cpp",
+        "mutex": "cpp",
+        "thread": "cpp"
     }
 }
