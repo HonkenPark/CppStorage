@@ -114,10 +114,16 @@ std::string AzureManager::get_faceId_from_json(std::string json)
 
   if ((json.front() == '[') && (json.back() == ']'))
   {
-    std::cout << "Front '[' and Last ']' will be deleted !!" << json << std::endl;
+    std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "Front '[' and Last ']' will be deleted !!" << json << std::endl;
     json.erase(0, 1);
     json.pop_back();
   }
+
+  if (json.empty())
+  {
+    return "";
+  }
+
   std::string tmp = json;
 
   while((pos = tmp.find("faceId")) != std::string::npos)
@@ -129,7 +135,7 @@ std::string AzureManager::get_faceId_from_json(std::string json)
   if (count > 1)
   {
     // TODO: Temporary, 2nd~ result will be deleted.
-    std::cout << "Onlt 1th faceId will be processed !!" << json << std::endl;
+    std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "Onlt 1th faceId will be processed !!" << json << std::endl;
     if ((pos = json.find(",{")) != std::string::npos)
     {
       tmp = json.substr(0, pos);
@@ -197,7 +203,7 @@ std::string AzureManager::generate_key_header()
   ret.append(face_header_prefix)
      .append(face_header_key);
   
- // std::cout << "generate_key_header : [" << ret << "]" << std::endl;
+ std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "generate_key_header : [" << ret << "]" << std::endl;
   return ret;
 }
 
@@ -214,10 +220,10 @@ std::string AzureManager::generate_content_header(EImageSource source)
   }
   else
   {
-    std::cout << "[ERROR] Unknown Image Source" << std::endl;
+    std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "[ERROR] Unknown Image Source" << std::endl;
   }
 
- // std::cout << "generate_content_header : [" << ret << "]" << std::endl;
+ std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "generate_content_header : [" << ret << "]" << std::endl;
   return ret;
 }
 
@@ -253,12 +259,12 @@ std::string AzureManager::generate_post_url(ERequestType type)
       ret.append(face_type_find);
     break;
     default:
-      std::cout << "[ERROR] Unknown Request Type" << std::endl;
+      std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "[ERROR] Unknown Request Type" << std::endl;
       ret.clear();
     break;
   }
 
- // std::cout << "generate_post_url : [" << ret << "]" << std::endl;
+ std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "generate_post_url : [" << ret << "]" << std::endl;
   return ret;
 }
 
@@ -274,7 +280,7 @@ std::string AzureManager::generate_post_data(EImageSource source, ERequestType t
     {
       ret.append(face_test_post_data_url_prefix)
          .append(input).append(face_test_post_data_url_postfix);
-      std::cout << ret << std::endl;
+      std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << ret << std::endl;
     }
     else if (EImageSource::SOURCE_STREAM == source)
     {
@@ -290,21 +296,21 @@ std::string AzureManager::generate_post_data(EImageSource source, ERequestType t
       }
       else
       {
-        std::cout << "[ERROR] ifstream failed" << std::endl;
+        std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "[ERROR] ifstream failed" << std::endl;
         ret.clear();
       }
     }
     else
     {
-      std::cout << "[ERROR] Unknown Image Source" << std::endl;
+      std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "[ERROR] Unknown Image Source" << std::endl;
     }
     break;
     case ERequestType::TYPE_FIND_SIMILAR:
       ret = get_json_from_faceId(faceId_, "10");
-      std::cout << ret << std::endl;
+      std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << ret << std::endl;
     break;
     default:
-      std::cout << "[ERROR] Unknown Request Type" << std::endl;
+      std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "[ERROR] Unknown Request Type" << std::endl;
       ret.clear();
     break;
   }
@@ -318,9 +324,9 @@ void AzureManager::add_group_faceId_list(std::string name, std::string value)
   group_faceId_.insert(std::pair<std::string, std::string>(name, value));
 }
 
-void AzureManager::faceId(EImageSource source, ERequestType type, std::string& input, std::string& faceId)
+void AzureManager::faceId(EImageSource source, ERequestType type, std::string& input, std::string& response)
 {
-  std::cout << "faceId  S" << std::endl;
+  std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "faceId  S" << std::endl;
   std::string contents_for_postfield = "";
 
   if (ERequestType::TYPE_FIND_SIMILAR == type)
@@ -364,23 +370,30 @@ void AzureManager::faceId(EImageSource source, ERequestType type, std::string& i
 
     /* TODO: Get faceId from result Json */
 
-    if (ERequestType::TYPE_FIND_SIMILAR != type)
-    {
-      faceId = get_faceId_from_json(result);
-    }
+    std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "RESPONSE from AZURE \n" << result << std::endl;
+    response = get_faceId_from_json(result);
   }
   else
   {
-    std::cout << "[ERROR] curl is nullptr !!" << std::endl;
+    std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "[ERROR] curl is nullptr !!" << std::endl;
     return;
   }
 
-  faceId_ = faceId;
+  faceId_ = response;
 
   if (ERequestType::TYPE_FIND_SIMILAR == type)
   {
-    std::cout << result << std::endl;
+    response.clear();
+    for (auto iter : group_faceId_)
+    {
+      if (iter.first == faceId_)
+      {
+        std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << iter.second << std::endl;
+        response = iter.second;
+        break;
+      }
+    }
     //TODO: result --> [{"faceId":"4e4610b2-60b3-439c-9e7e-a26b8aefcf3d","confidence":1.0}]   faceId parcing 후, 리스트에서 검색
   }
-  std::cout << "faceId  E" << std::endl;
+  std::cout << "[" << __FILE__ << "][" << __FUNCTION__ << "][" << __LINE__ << "]" << "faceId  E" << std::endl;
 }

@@ -70,7 +70,7 @@ public:
     std::string generate_post_url(ERequestType type);
     std::string generate_post_data(EImageSource source, ERequestType type, std::string input);
 
-    void faceId(EImageSource source, ERequestType mode, std::string& param, std::string& faceId);
+    void faceId(EImageSource source, ERequestType mode, std::string& param, std::string& response);
     void add_group_faceId_list(std::string name, std::string value);
 
 private:
